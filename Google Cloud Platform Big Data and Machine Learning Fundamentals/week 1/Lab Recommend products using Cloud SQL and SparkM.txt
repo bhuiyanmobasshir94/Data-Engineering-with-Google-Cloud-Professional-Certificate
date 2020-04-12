@@ -1,0 +1,210 @@
+SHOW DATABASES;
+
+CREATE DATABASE IF NOT EXISTS recommendation_spark;
+
+USE recommendation_spark;
+
+DROP TABLE IF EXISTS Recommendation;
+DROP TABLE IF EXISTS Rating;
+DROP TABLE IF EXISTS Accommodation;
+
+CREATE TABLE IF NOT EXISTS Accommodation
+(
+  id varchar(255),
+  title varchar(255),
+  location varchar(255),
+  price int,
+  rooms int,
+  rating float,
+  type varchar(255),
+  PRIMARY KEY (ID)
+);
+
+CREATE TABLE  IF NOT EXISTS Rating
+(
+  userId varchar(255),
+  accoId varchar(255),
+  rating int,
+  PRIMARY KEY(accoId, userId),
+  FOREIGN KEY (accoId)
+    REFERENCES Accommodation(id)
+);
+
+CREATE TABLE  IF NOT EXISTS Recommendation
+(
+  userId varchar(255),
+  accoId varchar(255),
+  prediction float,
+  PRIMARY KEY(userId, accoId),
+  FOREIGN KEY (accoId)
+    REFERENCES Accommodation(id)
+);
+
+SHOW DATABASES;
+
+USE recommendation_spark;
+
+SHOW TABLES;
+
+SELECT * FROM Accommodation;
+
+echo "Creating bucket: gs://$DEVSHELL_PROJECT_ID"
+gsutil mb gs://$DEVSHELL_PROJECT_ID
+
+echo "Copying data to our storage from public dataset"
+gsutil cp gs://cloud-training/bdml/v2.0/data/accommodation.csv gs://$DEVSHELL_PROJECT_ID
+gsutil cp gs://cloud-training/bdml/v2.0/data/rating.csv gs://$DEVSHELL_PROJECT_ID
+
+echo "Show the files in our bucket"
+gsutil ls gs://$DEVSHELL_PROJECT_ID
+
+echo "View some sample data"
+gsutil cat gs://$DEVSHELL_PROJECT_ID/accommodation.csv
+
+USE recommendation_spark;
+
+SELECT * FROM Rating
+LIMIT 15;
+
+SELECT COUNT(*) AS num_ratings
+FROM Rating;
+
+SELECT
+    COUNT(userId) AS num_ratings,
+    COUNT(DISTINCT userId) AS distinct_user_ratings,
+    MIN(rating) AS worst_rating,
+    MAX(rating) AS best_rating,
+    AVG(rating) AS avg_rating
+FROM Rating;
+
+SELECT
+    userId,
+    COUNT(rating) AS num_ratings
+FROM Rating
+GROUP BY userId
+ORDER BY num_ratings DESC;
+
+echo "Authorizing Cloud Dataproc to connect with Cloud SQL"
+CLUSTER=rentals
+CLOUDSQL=rentals
+ZONE=us-central1-f
+NWORKERS=2
+
+machines="$CLUSTER-m"
+for w in `seq 0 $(($NWORKERS - 1))`; do
+   machines="$machines $CLUSTER-w-$w"
+done
+
+echo "Machines to authorize: $machines in $ZONE ... finding their IP addresses"
+ips=""
+for machine in $machines; do
+    IP_ADDRESS=$(gcloud compute instances describe $machine --zone=$ZONE --format='value(networkInterfaces.accessConfigs[].natIP)' | sed "s/\[u'//g" | sed "s/'\]//g" )/32
+    echo "IP address of $machine is $IP_ADDRESS"
+    if [ -z  $ips ]; then
+       ips=$IP_ADDRESS
+    else
+       ips="$ips,$IP_ADDRESS"
+    fi
+done
+
+echo "Authorizing [$ips] to access cloudsql=$CLOUDSQL"
+gcloud sql instances patch $CLOUDSQL --authorized-networks $ips
+
+gsutil cp gs://cloud-training/bdml/v2.0/model/train_and_apply.py train_and_apply.py
+cloudshell edit train_and_apply.py
+
+#!/usr/bin/env python
+"""
+Copyright Google Inc. 2016
+Licensed under the Apache License, Version 2.0 (the "License");
+you may not use this file except in compliance with the License.
+You may obtain a copy of the License at
+
+http://www.apache.org/licenses/LICENSE-2.0
+
+Unless required by applicable law or agreed to in writing, software
+distributed under the License is distributed on an "AS IS" BASIS,
+WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+See the License for the specific language governing permissions and
+limitations under the License.
+"""
+
+
+import os
+import sys
+import pickle
+import itertools
+from math import sqrt
+from operator import add
+from os.path import join, isfile, dirname
+from pyspark import SparkContext, SparkConf, SQLContext
+from pyspark.mllib.recommendation import ALS, MatrixFactorizationModel, Rating
+from pyspark.sql.types import StructType, StructField, StringType, FloatType
+
+# MAKE EDITS HERE
+CLOUDSQL_INSTANCE_IP = '35.224.210.133'   # <---- CHANGE (database server IP)
+CLOUDSQL_DB_NAME = 'recommendation_spark' # <--- leave as-is
+CLOUDSQL_USER = 'root'  # <--- leave as-is
+CLOUDSQL_PWD  = '1435'  # <---- CHANGE
+
+# DO NOT MAKE EDITS BELOW
+conf = SparkConf().setAppName("train_model")
+sc = SparkContext(conf=conf)
+sqlContext = SQLContext(sc)
+
+jdbcDriver = 'com.mysql.jdbc.Driver'
+jdbcUrl    = 'jdbc:mysql://%s:3306/%s?user=%s&password=%s' % (CLOUDSQL_INSTANCE_IP, CLOUDSQL_DB_NAME, CLOUDSQL_USER, CLOUDSQL_PWD)
+
+# checkpointing helps prevent stack overflow errors
+sc.setCheckpointDir('checkpoint/')
+
+# Read the ratings and accommodations data from Cloud SQL
+dfRates = sqlContext.read.format('jdbc').options(driver=jdbcDriver, url=jdbcUrl, dbtable='Rating', useSSL='false').load()
+dfAccos = sqlContext.read.format('jdbc').options(driver=jdbcDriver, url=jdbcUrl, dbtable='Accommodation', useSSL='false').load()
+print("read ...")
+
+# train the model
+model = ALS.train(dfRates.rdd, 20, 20) # you could tune these numbers, but these are reasonable choices
+print("trained ...")
+
+# use this model to predict what the user would rate accommodations that she has not rated
+allPredictions = None
+for USER_ID in range(0, 100):
+  dfUserRatings = dfRates.filter(dfRates.userId == USER_ID).rdd.map(lambda r: r.accoId).collect()
+  rddPotential  = dfAccos.rdd.filter(lambda x: x[0] not in dfUserRatings)
+  pairsPotential = rddPotential.map(lambda x: (USER_ID, x[0]))
+  predictions = model.predictAll(pairsPotential).map(lambda p: (str(p[0]), str(p[1]), float(p[2])))
+  predictions = predictions.takeOrdered(5, key=lambda x: -x[2]) # top 5
+  print("predicted for user={0}".format(USER_ID))
+  if (allPredictions == None):
+    allPredictions = predictions
+  else:
+    allPredictions.extend(predictions)
+
+# write them
+schema = StructType([StructField("userId", StringType(), True), StructField("accoId", StringType(), True), StructField("prediction", FloatType(), True)])
+dfToSave = sqlContext.createDataFrame(allPredictions, schema)
+dfToSave.write.jdbc(url=jdbcUrl, table='Recommendation', mode='overwrite')
+
+gsutil cp train_and_apply.py gs://$DEVSHELL_PROJECT_ID
+
+gs://qwiklabs-gcp-02-3983487fd3c8/train_and_apply.py
+
+USE recommendation_spark;
+
+SELECT COUNT(*) AS count FROM Recommendation;
+
+SELECT
+    r.userid,
+    r.accoid,
+    r.prediction,
+    a.title,
+    a.location,
+    a.price,
+    a.rooms,
+    a.rating,
+    a.type
+FROM Recommendation as r
+JOIN Accommodation as a
+ON r.accoid = a.id
+WHERE r.userid = 10;
