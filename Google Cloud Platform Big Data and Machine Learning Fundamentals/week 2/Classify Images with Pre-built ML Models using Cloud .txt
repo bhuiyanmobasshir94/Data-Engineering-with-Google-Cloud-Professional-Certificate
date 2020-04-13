@@ -1,0 +1,17 @@
+export PROJECT_ID=$DEVSHELL_PROJECT_ID
+export QWIKLABS_USERNAME=<QWIKLABS_USERNAME>
+
+gsutil mb -p $PROJECT_ID \
+    -c regional    \
+    -l us-central1 \
+    gs://$PROJECT_ID-vcm/
+
+export BUCKET=YOUR_BUCKET_NAME
+
+gsutil -m cp -r gs://automl-codelab-clouds/* gs://${BUCKET}
+
+gsutil cp gs://automl-codelab-metadata/data.csv .
+
+sed -i -e "s/placeholder/${BUCKET}/g" ./data.csv
+
+gsutil cp ./data.csv gs://${BUCKET}
