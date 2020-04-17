@@ -1,0 +1,88 @@
+gcloud auth list
+
+gcloud config list project
+
+export PROJECT_ID=$(gcloud info --format='value(config.project)')
+export BUCKET=${PROJECT_ID}-ml
+
+gcloud sql instances create taxi \
+    --tier=db-n1-standard-1 --activation-policy=ALWAYS
+
+gcloud sql users set-password root --host % --instance taxi \
+ --password Passw0rd
+
+export ADDRESS=$(wget -qO - http://ipecho.net/plain)/32
+
+gcloud sql instances patch taxi --authorized-networks $ADDRESS
+
+MYSQLIP=$(gcloud sql instances describe \
+taxi --format="value(ipAddresses.ipAddress)")
+
+echo $MYSQLIP
+
+mysql --host=$MYSQLIP --user=root \
+      --password --verbose
+
+
+create database if not exists bts;
+use bts;
+
+drop table if exists trips;
+
+create table trips (
+  vendor_id VARCHAR(16),		
+  pickup_datetime DATETIME,
+  dropoff_datetime DATETIME,
+  passenger_count INT,
+  trip_distance FLOAT,
+  rate_code VARCHAR(16),
+  store_and_fwd_flag VARCHAR(16),
+  payment_type VARCHAR(16),
+  fare_amount FLOAT,
+  extra FLOAT,
+  mta_tax FLOAT,
+  tip_amount FLOAT,
+  tolls_amount FLOAT,
+  imp_surcharge FLOAT,
+  total_amount FLOAT,
+  pickup_location_id VARCHAR(16),
+  dropoff_location_id VARCHAR(16)
+);
+
+describe trips;
+
+select distinct(pickup_location_id) from trips;
+
+exit
+
+gsutil cp gs://cloud-training/OCBL013/nyc_tlc_yellow_trips_2018_subset_1.csv trips.csv-1
+gsutil cp gs://cloud-training/OCBL013/nyc_tlc_yellow_trips_2018_subset_2.csv trips.csv-2
+
+mysqlimport --local --host=$MYSQLIP --user=root --password \
+--ignore-lines=1 --fields-terminated-by=',' bts trips.csv-*
+
+mysql --host=$MYSQLIP --user=root  --password
+
+use bts;
+
+select distinct(pickup_location_id) from trips;
+
+select
+  max(trip_distance),
+  min(trip_distance)
+from
+  trips;
+
+select count(*) from trips where trip_distance = 0;
+
+select count(*) from trips where fare_amount < 0;
+
+select
+  payment_type,
+  count(*)
+from
+  trips
+group by
+  payment_type;
+
+exit
