@@ -1,0 +1,22 @@
+gcloud auth list
+
+gcloud config list project
+
+export BUCKET=$GOOGLE_CLOUD_PROJECT
+gsutil mb gs://$BUCKET
+gsutil cp gs://cloud-training/OCBL017/ny-taxi-2018-sample.csv gs://$BUCKET
+
+gsutil mb gs://$BUCKET-temp
+
+SELECT
+  zone_id,
+  zone_name,
+  borough
+FROM
+  `bigquery-public-data.new_york_taxi_trips.taxi_zone_geom`
+
+SELECT
+  *
+FROM
+  `qwiklabs-gcp-26b5f140210c0060.trips.trips_pickup_name`
+  
