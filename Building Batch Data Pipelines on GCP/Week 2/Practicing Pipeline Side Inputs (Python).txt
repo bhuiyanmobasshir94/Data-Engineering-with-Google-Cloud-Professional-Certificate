@@ -1,0 +1,38 @@
+gcloud auth list
+
+gcloud config list project
+
+git clone https://github.com/GoogleCloudPlatform/training-data-analyst
+
+BUCKET=$(gcloud config get-value project)
+echo $BUCKET
+
+echo $DEVSHELL_PROJECT_ID
+
+cd ~/training-data-analyst/courses/data_analysis/lab2/python
+sudo ./install_packages.sh
+
+SELECT
+  content
+FROM
+  `fh-bigquery.github_extracts.contents_java_2016`
+LIMIT
+  10
+
+SELECT
+  COUNT(*)
+FROM
+  `fh-bigquery.github_extracts.contents_java_2016`
+
+cd ~/training-data-analyst/courses/data_analysis/lab2/python
+
+cd ~/training-data-analyst/courses/data_analysis/lab2/python
+
+nano JavaProjectsThatNeedHelp.py
+
+cd ~/training-data-analyst/courses/data_analysis/lab2/python
+
+python3 JavaProjectsThatNeedHelp.py --bucket $BUCKET --project $DEVSHELL_PROJECT_ID --DirectRunner
+
+python3 JavaProjectsThatNeedHelp.py --bucket $BUCKET --project $DEVSHELL_PROJECT_ID --DataFlowRunner
+
