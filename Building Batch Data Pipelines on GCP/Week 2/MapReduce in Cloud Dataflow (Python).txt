@@ -1,0 +1,21 @@
+gcloud auth list
+
+gcloud config list project
+
+git clone https://github.com/GoogleCloudPlatform/training-data-analyst
+
+cd training-data-analyst/courses/data_analysis/lab2/python
+
+sudo ./install_packages.sh
+
+cd ~/training-data-analyst/courses/data_analysis/lab2/python
+python3 ./is_popular.py
+
+ls -al /tmp
+
+cat /tmp/output-*
+
+python3 ./is_popular.py --output_prefix=/tmp/myoutput
+
+ls -lrt /tmp/myoutput*
+
