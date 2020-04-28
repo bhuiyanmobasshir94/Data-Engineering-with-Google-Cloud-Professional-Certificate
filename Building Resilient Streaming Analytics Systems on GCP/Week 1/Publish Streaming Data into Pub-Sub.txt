@@ -1,0 +1,40 @@
+ls /training
+
+pip --version
+
+cp -r /training/training-data-analyst/ .
+
+export DEVSHELL_PROJECT_ID=$(gcloud config get-value project)
+
+cd ~/training-data-analyst/courses/streaming/publish
+
+gcloud pubsub topics create sandiego
+
+gcloud pubsub topics publish sandiego --message "hello"
+
+gcloud pubsub subscriptions create --topic sandiego mySub1
+
+gcloud pubsub subscriptions pull --auto-ack mySub1
+
+gcloud pubsub topics publish sandiego --message "hello again"
+gcloud pubsub subscriptions pull --auto-ack mySub1
+
+gcloud pubsub subscriptions delete mySub1
+
+cd ~/training-data-analyst/courses/streaming/publish
+nano send_sensor_data.
+
+./download_data.sh
+
+sudo apt-get install -y python-pip
+
+sudo pip install -U google-cloud-pubsub
+
+./send_sensor_data.py --speedFactor=60 --project $DEVSHELL_PROJECT_ID
+
+cd ~/training-data-analyst/courses/streaming/publish
+
+gcloud pubsub subscriptions create --topic sandiego mySub2
+gcloud pubsub subscriptions pull --auto-ack mySub2
+
+gcloud pubsub subscriptions delete mySub2
