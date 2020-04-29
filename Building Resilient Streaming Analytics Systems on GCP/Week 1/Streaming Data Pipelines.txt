@@ -1,0 +1,48 @@
+ls /training
+
+mvn -version
+
+java -version
+
+cp -r /training/training-data-analyst/ .
+
+source /training/project_env.sh
+
+/training/sensor_magic.sh
+
+cd ~/training-data-analyst/courses/streaming/process/sandiego
+
+cat run_oncloud.sh
+
+https://github.com/GoogleCloudPlatform/training-data-analyst/blob/master/courses/streaming/process/sandiego/run_oncloud.sh
+
+cd ~/training-data-analyst/courses/streaming/process/sandiego/src/main/java/com/google/cloud/training/dataanalyst/sandiego
+
+cat AverageSpeeds.java
+
+https://github.com/GoogleCloudPlatform/training-data-analyst/blob/master/courses/streaming/process/sandiego/src/main/java/com/google/cloud/training/dataanalyst/sandiego/AverageSpeeds.java
+
+SELECT *
+FROM `demos.average_speeds`
+ORDER BY timestamp DESC
+LIMIT 100
+
+SELECT
+MAX(timestamp)
+FROM
+`demos.average_speeds`
+
+SELECT *
+FROM `demos.average_speeds`
+FOR SYSTEM_TIME AS OF TIMESTAMP_SUB(CURRENT_TIMESTAMP, INTERVAL 10 MINUTE)
+ORDER BY timestamp DESC
+LIMIT 100
+
+cd ~/training-data-analyst/courses/streaming/process/sandiego/src/main/java/com/google/cloud/training/dataanalyst/sandiego
+
+cat CurrentConditions.java
+
+cd ~/training-data-analyst/courses/streaming/process/sandiego
+
+./run_oncloud.sh $DEVSHELL_PROJECT_ID $BUCKET CurrentConditions
+
