@@ -1,0 +1,14 @@
+ls /training
+
+mvn -version
+
+java -version
+
+cp -r /training/training-data-analyst/ .
+
+source /training/project_env.sh
+
+SELECT max(speed) as maxspeed, min(speed) as minspeed,
+avg(speed) as avgspeed, highway
+FROM `<PROJECTID>.demos.current_conditions`
+group by highway
