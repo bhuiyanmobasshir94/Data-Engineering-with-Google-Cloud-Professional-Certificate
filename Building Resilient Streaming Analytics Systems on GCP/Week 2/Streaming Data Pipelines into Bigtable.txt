@@ -1,0 +1,37 @@
+ls /training
+
+cp -r /training/training-data-analyst/ .
+
+source /training/project_env.sh
+
+cd ~/training-data-analyst/courses/streaming/process/sandiego
+./install_quickstart.sh
+
+/training/sensor_magic.sh
+
+source /training/project_env.sh
+
+cd ~/training-data-analyst/courses/streaming/process/sandiego
+
+nano run_oncloud.sh
+
+cd ~/training-data-analyst/courses/streaming/process/sandiego
+
+./create_cbt.sh
+
+cd ~/training-data-analyst/courses/streaming/process/sandiego
+
+./run_oncloud.sh $DEVSHELL_PROJECT_ID $BUCKET CurrentConditions --bigtable
+
+cd ~/training-data-analyst/courses/streaming/process/sandiego/quickstart
+
+./quickstart.sh
+
+scan 'current_conditions', {'LIMIT' => 2}
+
+scan 'current_conditions', {'LIMIT' => 10, STARTROW => '15#S#1', ENDROW => '15#S#999', COLUMN => 'lane:speed'}
+
+exit
+
+cd ~/training-data-analyst/courses/streaming/process/sandiego
+./delete_cbt.sh
