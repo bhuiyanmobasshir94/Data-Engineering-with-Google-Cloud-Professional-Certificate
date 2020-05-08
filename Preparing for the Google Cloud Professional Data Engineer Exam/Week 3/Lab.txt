@@ -1,0 +1,10 @@
+SELECT
+  AVG(minutes) AS avg_time
+FROM
+  `qwiklabs-gcp-02-3c268524f283.JasmineJasper.triplog`
+WHERE
+  origin = "LHR" AND destination = "KUL"
+GROUP BY
+  airline 
+ORDER BY 
+  avg_time ASC
