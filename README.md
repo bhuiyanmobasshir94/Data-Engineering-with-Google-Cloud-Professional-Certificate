@@ -11,3 +11,5 @@ If you would like to become Google Cloud certified and demonstrate your proficie
 This Professional Certificate incorporates hands-on labs using our Qwiklabs platform.
 
 These hands on components will let you apply the skills you learn in the video lectures. Projects will incorporate topics such as Google BigQuery, which are used and configured within Qwiklabs. You can expect to gain practical hands-on experience with the concepts explained throughout the modules.
+
+Specialization [link](https://www.coursera.org/specializations/gcp-data-machine-learning)
